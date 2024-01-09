@@ -1,0 +1,65 @@
+---
+title: "Sentiment2"
+output: html_document
+date: "2023-02-16"
+---
+
+```{r}
+library(tidytext)
+library(textdata)
+library(igraph)
+library(scales)
+library(tidyverse)
+
+Sents <- get_sentiments("nrc")
+
+SVal <- Sents$sentiment
+names(SVal) <- Sents$word
+
+SVF <- function(x){return(as.character(SVal[x]))}
+
+edgeData.v <- c()
+numEdges = 0
+
+A <- c()
+B <- c()
+
+
+text.v <- readLines("JaneEyre.txt")                                 # readlines instead of scan
+start.v <- (grep("\\*\\*\\*\\W*START OF TH",text.v) + 1)
+end.v <- (grep("\\*\\*\\*\\W*END OF TH",text.v) - 1)
+novel.lines.v <- text.v[start.v:end.v]                              # 1 element per line
+novel.v <- paste(novel.lines.v, collapse="<br>")                    # linebreaks become tags
+novel.lower.v <- tolower(novel.v)
+jane.chap.l <- strsplit(novel.lower.v, "<br>chapter [ivx]+<br>")    # split at chapter breaks
+jane.chap.v <- unlist(jane.chap.l)                                  # 1 element per chapter
+
+for(i in 1:length(jane.chap.v)) {    
+  chapteri <- jane.chap.v[i]
+  chapterlist <- strsplit(chapteri,"\\W")
+  chapterv <- unlist(chapterlist)
+  baz <- SVF(chapterv)
+  buz <- baz[which(baz!="NA")]
+  for(j in 1:length(buz)) {
+    numEdges <- numEdges + 1
+    B <- append(B, as.character(i))
+    A <- append(A, as.character(numEdges))
+    B <- append(B, buz[j])
+    A <- append(A, as.character(numEdges))
+  }
+}
+
+someEdges <- data.frame(A,B)
+V <- crossprod(table(someEdges[1:2]))
+diag(V) <- 0
+JaneSentimentByChapter <- graph_from_adjacency_matrix(V, mode="undirected", weighted=TRUE)
+
+# from Arnold and Tilton
+set.seed(1)
+lout <- layout.fruchterman.reingold(JaneSentimentByChapter)
+plot.igraph(JaneSentimentByChapter, layout=lout, vertex.size=10, vertex.label.cex=0.5, ,edge.width=(E(JaneSentimentByChapter)$weight)/200)
+eigenCent <- evcent(JaneSentimentByChapter)$vector
+sort(eigenCent,decreasing=TRUE)[1:30]
+
+
+```

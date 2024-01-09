@@ -1,0 +1,54 @@
+---
+title: "Sentiment1"
+output: html_document
+date: "2023-02-16"
+---
+
+Make variables and setup to get text
+
+```{r}
+library(tidytext)
+library(textdata)
+
+Sents <- get_sentiments("afinn")
+SVal <- Sents$value
+names(SVal) <- Sents$word
+
+SVF <- function(x){return(as.integer(SVal[x]))}
+
+JaneSentimentByChapter <- c() # start with an empty vector 
+JaneSentimentByChapterSD <- c()
+```
+
+Scan book from online instead of downloading to save space and for anyone else that would want to use the file
+Start setting up the novel into all lowercase and splitting up words properly
+
+```{r}
+text.v <- scan("https://www.gutenberg.org/files/1260/1260-0.txt", what="character", sep="\n")  # scan
+start.v <- (grep("\\*\\*\\*\\W*START OF TH",text.v) + 1)
+end.v <- (grep("\\*\\*\\*\\W*END OF TH",text.v) - 1)
+novel.lines.v <- text.v[start.v:end.v]                              # 1 element per line
+novel.v <- paste(novel.lines.v, collapse="<br>")                    # linebreaks become tags
+novel.lower.v <- tolower(novel.v)
+jane.chap.l <- strsplit(novel.lower.v, "<br>chapter [ivx]+(—conclusion)?<br>")    # split at chapter breaks
+jane.chap.v <- unlist(jane.chap.l)                                  # 1 element per chapter
+```
+
+Make a loop to go through each chapter and plot the words for the sum and standard variation
+
+```{r}
+for(i in 1:length(jane.chap.v)) {    
+  chapteri <- jane.chap.v[i]
+  chapterlist <- strsplit(chapteri,"\\W")
+  chapterv <- unlist(chapterlist)
+  baz <- SVF(chapterv)
+  buz <- baz[which(baz!="NA")]
+  JaneSentimentByChapter[i] = sum(buz)
+  JaneSentimentByChapterSD[i] = sd(buz)
+}
+
+plot(JaneSentimentByChapter)
+plot(JaneSentimentByChapterSD)
+
+```
+

@@ -1,0 +1,70 @@
+---
+title: "Attribution"
+output: html_document
+date: "2023-02-28"
+---
+
+## Stylometry with the Brontë novels
+
+Unit of analysis is the book chapter. Frequencies of 20 common words are projected onto the first two principal components. 
+
+```{r}
+library(tidyverse)
+
+Gut <- read_csv("brontes.csv")
+dWords <- read_csv("topwords.csv")
+chapters <- read_csv("chapters.csv")
+
+h <- 0
+
+for (i in 1:nrow(Gut)){
+  fileurl <- toString(Gut[i,'url'])
+  text.v <- scan(fileurl, what="character", sep="\n")
+  start.v <- (grep("\\*\\*\\*\\W*START OF TH",text.v) + 1)
+  end.v <- (grep("\\*\\*\\*\\W*END OF TH",text.v) - 1)
+  start.metadata.v <- text.v[1:start.v -1]
+  end.metadata.v <- text.v[(end.v+1):length(text.v)]
+  metadata.v <- c(start.metadata.v, end.metadata.v)
+  novel.lines.v <- text.v[start.v:end.v]
+  novel.v <- paste(novel.lines.v, collapse="<br>")
+  novel.lower.v <- tolower(novel.v)
+  bronte.chap.l <- strsplit(novel.lower.v, "<br>\\W*chapter [ivxl]+(—conclusion)?<br>")
+  bronte.chap.v <- unlist(bronte.chap.l)
+  
+  for(j in 1:length(bronte.chap.v)) {
+    g = (h + j)
+    chapterj <- bronte.chap.v[j]
+    chapterlist <- strsplit(chapterj,"\\W")
+    chapterwords.v <- unlist(chapterlist)
+    not.blanks.v <- which(chapterwords.v !="")
+    chapterwords.v <- chapterwords.v[not.blanks.v]
+    total.words.v <- length(chapterwords.v)
+    chapters[g,'author'] <- Gut[i,'author']
+    chapters[g,'title'] <- Gut[i,'title']
+    chapters[g,'color'] <- Gut[i,'color']
+    chapters[g,'length'] <- toString(total.words.v)
+    chapters[g,'chapter'] <- toString(j - 1)
+    for (k in 1:nrow(dWords)){
+      theWord <- toString(dWords[k,'word'])
+      chapters[g,theWord] <- ((length(chapterwords.v[which(chapterwords.v == theWord)])/total.words.v) * 100)
+    }
+  }
+  h <- g
+}
+
+my.pca <- prcomp(chapters[c(6:25)], center = TRUE, scale. = TRUE)
+chapters['pc1'] <- my.pca$x[,1]
+chapters['pc2'] <- my.pca$x[,2]
+
+
+plot(chapters$the, chapters$that, col=chapters$color)
+plot(chapters$at, chapters$that, col=chapters$color)
+
+plot(chapters$pc1, chapters$pc2, col=chapters$color)
+
+reduced <- chapters[c(2,26)]
+distance_mat <- dist(reduced, method='euclidean')
+Hierar_cl <- hclust(distance_mat, method = "average")
+plot(Hierar_cl, labels=chapters$author)
+```
+
