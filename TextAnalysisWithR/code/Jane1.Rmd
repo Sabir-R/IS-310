@@ -1,0 +1,96 @@
+---
+title: "Jane Eyre exercise"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-02-02"
+---
+
+Set the working directory and scan the file from disk or retrieve over the web.
+
+```{r}
+setwd("/Users/saber/Desktop/IS310/TextAnalysisWithR")
+text.v <- scan("1260-0.txt", what="character", sep="\n")
+```
+
+The variable text.v is a vector of strings, the file having been read one line at a time.
+ 
+These regular expressions should work with Project Gutenberg files for finding the
+start an end of the text:
+
+- Three literal asterisk characters,
+- followed by zero or more non-word (i.e, white space) characters,
+- followed by "START OF TH" or "END OF TH".
+- The backslash character is a reserved escape character in R strings, so we
+  use two of them for a literal backslash.
+  
+```{r}
+start.v <- (grep("\\*\\*\\*\\W*START OF TH",text.v) + 1)
+end.v <- grep("\\*\\*\\*\\W*END OF TH",text.v)
+```
+
+Vectors in R can be indexed one element at a time, like 'foo.v[6]' or
+a group of elements via a range like 'foo.v[6:20]'. We can use variables, as 
+shown below and their values will be substituted.
+
+```{r}
+start.metadata.v <- text.v[1:start.v -1]
+end.metadata.v <- text.v[(end.v):length(text.v)]
+metadata.v <- c(start.metadata.v, end.metadata.v)
+novel.lines.v <-  text.v[start.v:(end.v-1)]
+```
+
+Collapse all the lines of the novel into one long string. Put a space where the
+line breaks had been. Convert the whole novel into lower case.
+
+```{r}
+novel.v <- paste(novel.lines.v, collapse=" ")
+novel.lower.v <- tolower(novel.v)
+```
+
+Divide the string into individual words by splitting on the regular expression
+'\W' that matches a non-word character. Don't forget to double slash for the
+string encoding. The 'strsplit' command returns a list and we want a vector, 
+copy the list contents into a new vector.
+
+```{r}
+jane.words.l <- strsplit(novel.lower.v, "\\W")
+jane.word.v <- unlist(jane.words.l)
+```
+
+Vectors give us powerful operations like "return a vector of element numbers
+where the string elements of this vector aren't blank." Then: "use that resulting
+numeric vector as indices and replace my vector of words entirely with a version
+that omits the empty strings.'
+
+```{r}
+not.blanks.v  <-  which(jane.word.v!="")
+jane.word.v <-  jane.word.v[not.blanks.v]
+```
+
+The 'which' command can also return an entire vector of values where the element
+we're looking for is repeated. The length of that vector gives us the number of
+occurrences.
+
+```{r}
+love.hits.v <- length(jane.word.v[which(jane.word.v=="love")])
+total.words.v <- length(jane.word.v)
+```
+
+Create a frequency table for the words in the novel. Sort that table in decreasing
+order. Divide the entries by the novel length (measured in words) and multiply
+by 100 to give percentages. Plot those numbers.
+
+```{r}
+jane.freqs.t <- table(jane.word.v)
+sorted.jane.freqs.t <- sort(jane.freqs.t , decreasing=TRUE)
+
+sorted.jane.rel.freqs.t <- 100*(sorted.jane.freqs.t/sum(sorted.jane.freqs.t))
+
+plot(sorted.jane.rel.freqs.t[1:10], type="b",
+     xlab="Top Ten Words", ylab="Percentage of Full Text", xaxt ="n")
+axis(1,1:10, labels=names(sorted.jane.rel.freqs.t [1:10]))
+```
+
+
+
